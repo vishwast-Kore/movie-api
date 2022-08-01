@@ -1,0 +1,4 @@
+
+        [console_scripts]
+        ingest=ingest.cli:cli
+    

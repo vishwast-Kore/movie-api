@@ -1,0 +1,14 @@
+Metadata-Version: 2.1
+Name: ingest
+Version: 0.0.1
+Summary: tool for data processing pipelines
+Home-page: https://github.com/frnsys/ingest
+Author: Francis Tseng
+Author-email: f@frnsys.com
+License: MIT
+Platform: UNKNOWN
+Requires-Dist: PyYAML (==3.12)
+
+UNKNOWN
+
+
