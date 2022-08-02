@@ -16,6 +16,7 @@ This project provides following APIs :-
 Running the app:
 
 Prerequisites - Install elasticsearch, flask, rabbitmq and celery in our python environment
+  
 Start rabbitmq and elasticsearch in the background
 
 Run celery tasks, defined in the tasks.py file, in the background :-
