@@ -1,2 +1,4 @@
 # created by virtualenv automatically
 config.py
+#Git token - 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
+git remote set-url origin https://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@github.com/vishwast-Kore/movie-api.git

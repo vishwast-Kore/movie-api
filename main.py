@@ -77,17 +77,15 @@ def unique_count():
     return res
 
 
-#API for getting all movies by an actor
+#API for getting all movies by an actor or by movie title
 @app.route('/<index>/<field>/<value>',methods=['get'])
 def get_field(index,field,value):
     if es.indices.exists(index=index):
         #check
         if field =="title":
             body = {
-                "match":{
-                    field:{
-                    "query": value,
-                    }
+                "match_phrase":{
+                    field: value
                 }
             }
         elif field=="actors":
