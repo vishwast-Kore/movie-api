@@ -14,6 +14,7 @@ This project provides following APIs :-
 7. Get all movies in the index - http://127.0.0.1:5000/get/movies
 
 Running the app:
+
 Prerequisites - Install elasticsearch, flask, rabbitmq and celery in our python environment
 Start rabbitmq and elasticsearch in the background
 
