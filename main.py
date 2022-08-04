@@ -1,9 +1,19 @@
 from flask import Flask,request,jsonify
 from tasks import *
-
-
+import json
 app = Flask('__name__')
 es = Elasticsearch('http://localhost:9200/')
+
+'''
+Improvements needed to be done today:
+
+Done - Add exception handling
+Done - Get info from user as request payload
+Done - Return statements should be an object 
+Done - Open the file from local directory 
+Make a workflow diagram
+
+'''
 
 @app.route('/')
 def home():
@@ -12,40 +22,49 @@ def home():
 #API for taking json file and inserting data into ES
 @app.route('/insert',methods = ['POST'])
 def insert():
-    content_type = request.headers.get('Content-Type')
-
-    if (content_type == 'application/json'):
-        json = request.json
-        response = async_insert.delay(json)
-        sender.publish_msg(response.id, "Queued")
-        return {"task_id" : str(response.id),
-                "task_status": 'Processing'}
+    #content_type = request.headers.get('Content-Type')
+    try:
+        with open('Movies_DB.json') as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        return jsonify(status_code=404, content={"Message": "File not found"})
+    #print(data)
+    if data:
+        try:
+            task = async_insert.delay(data)
+            print (task)
+            return jsonify(status_code = 202, content={"task_id" : str(task.id),
+                "task_status": 'Processing'})
+        except:
+            return jsonify(status_code=501, content={"Internal Server Error": "Could not load data into the server"})
     else:
-        return 'Content-Type not supported!'
-
+        return jsonify(status_code = 404, content={"Message":"File not found"})
 
 #API to know the status of a task
-@app.route('/status/<task_id>',methods = ['get'])
-def task_status(task_id):
-    task = helper.AsyncResult(task_id, app=helper)
+@app.route('/status',methods = ['get'])
+def task_status():
 
+    task_id = request.form.get('id')
+
+    task = helper.AsyncResult(task_id, app=helper)
     if task.ready():
         result = task.get()
-        return {"task_id" : task.id,
-                "task_status": 'SUCCESS',
-                "outcome": str(result)}
-    else :
-        return jsonify(status_code = 202, content={"task_id" : str(task.id),
-                "task_status": 'Processing'})
+        return jsonify(status_code=201, content={"task_id": str(task.id),
+                                                 "task_status": 'Completed'})
+    else:
+        return jsonify(status_code=202, content={"task_id": str(task.id),
+                                                 "task_status": 'Processing'})
 
 
 #API for deleting by id
-@app.route('/del/<index>/<id>',methods=['post'])
-def del_by_id(index,id):
-    if (es.exists(index=index, id=id)):
+@app.route('/delete',methods=['post'])
+def del_by_id():
+    index = request.form.get('index')
+    id = request.form.get('id')
+    if es.exists(index=index, id=id):
         movie = dict(es.delete(index=index,id = id))
-        return movie
-    return "No such document present"
+        return jsonify(status_code=201, content={"Message":"Record deleted successfully","Deleted Entry":movie})
+    return jsonify(status_code = 404, content={"Message":"No document found"})
 
 
 #API for count of unique entries in various fields
@@ -61,44 +80,47 @@ def unique(field):
 
 @app.route('/unique')
 def unique_count():
-    body={
-            "distinct_name_count": {"cardinality": {"field": "director.keyword"}}
-    }
+    index = request.form.get('index')
+    if es.indices.exists(index=index):
+        body={
+                "distinct_name_count": {"cardinality": {"field": "director.keyword"}}
+        }
+        dir = unique("director")
+        genres = unique("genres")
+        actors = unique("actors")
 
-    dir = unique("director")
-    genres = unique("genres")
-    actors = unique("actors")
-
-    res = {
-        "Unique Genres": genres,
-        "Unique Directors": dir,
-        "Unique Actors": actors
-    }
-    return res
+        res = {
+            "Unique Genres": genres,
+            "Unique Directors": dir,
+            "Unique Actors": actors
+        }
+        return jsonify(status_code=201, content=res)
+    else :
+        return jsonify(status_code=404, content={"Message":"No such index found"})
 
 
 #API for getting all movies by an actor or by movie title
-@app.route('/<index>/<field>/<value>',methods=['get'])
-def get_field(index,field,value):
+@app.route('/find',methods=['get','post'])
+def get_field():
+    index = request.form.get('index')
+    field = request.form.get('field')
+    value = request.form.get('value')
+
     if es.indices.exists(index=index):
         #check
-        if field =="title":
+        if field =="title" or field=="actors":
             body = {
                 "match_phrase":{
                     field: value
                 }
             }
-        elif field=="actors":
-            body = {
-                "multi_match": {
-                    "query": value,
-                    "fields": [field]
-                }
-            }
+        else :
+            return jsonify(status_code=404, content={"Message": "No such field found"})
         result = dict(es.search(index=index, query=body))
-        print(result)
-        return result['hits']
-    return "No such document present"
+
+        return jsonify(status_code=201, content=result['hits'])
+    return jsonify(status_code=404, content={"Message": "No such index found"})
+
 
 #API for getting all the docs
 @app.route('/get/<index>',methods=['get'])
@@ -109,8 +131,8 @@ def get_all(index):
         res = {}
         for doc in result['hits']['hits']:
             res[doc['_id']] = doc['_source']
-        return res
-    return "No such document present"
+        return jsonify(status_code=201, content=res)
+    return jsonify(status_code=404, content={"Message": "No such index found"})
 
 
 
