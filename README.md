@@ -27,3 +27,5 @@ Run rabbitmq queue receiver :-
 
 Run the main file :-
 >>> python main.py
+
+![Movie api](https://user-images.githubusercontent.com/109270412/182840739-93ff7109-272a-4486-a83e-0befd9b6e685.jpg)
